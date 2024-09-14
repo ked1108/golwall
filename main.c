@@ -106,14 +106,18 @@ int main(int argc, char* argv[]) {
 
     unsigned char* image = malloc(IMG_WIDTH * IMG_HEIGHT * 4);
     char* command = "nitrogen --set-zoom-fill";
+
     asprintf(&command, "nitrogen --set-zoom-fill %s", filepath);
+    convert_to_image(image);
+    encodeOneStep(filepath, image);
+    system(command);
+
     int iter = 0;
     while (1) {
         convert_to_image(image);
         encodeOneStep(filepath, image);
         step();
         memcpy(grid, buff, sizeof(grid));
-        system(command);
         usleep(5000*1000);
         iter++;
         if(iter == 10) generate();
