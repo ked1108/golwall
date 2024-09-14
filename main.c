@@ -120,7 +120,7 @@ int main(int argc, char* argv[]) {
         memcpy(grid, buff, sizeof(grid));
         usleep(5000*1000);
         iter++;
-        if(iter == 10) generate();
+        if(iter%10 == 0) generate();
     }
 
     return 0;
