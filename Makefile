@@ -4,7 +4,7 @@ CFLAGS = -pedantic -Wall -Wextra
 
 SRCS = main.c lodepng.c
 
-OUT = golwall
+OUT = golwall-sway
 
 all: $(OUT)
 
