@@ -11,3 +11,5 @@ To build the program:
 make
 sudo make install #optional step for installing systemwide
 ```
+I am currently working on implementing support for different DE's and WM's as of now it should be working on i3 and Gnome  
+however Sway does not support nitrogen so I have created a separate branch for it.
