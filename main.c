@@ -105,9 +105,8 @@ int main(int argc, char* argv[]) {
     generate();
 
     unsigned char* image = malloc(IMG_WIDTH * IMG_HEIGHT * 4);
-    char* command = "nitrogen --set-zoom-fill";
-
-    asprintf(&command, "nitrogen --set-zoom-fill %s", filepath);
+    char* command;
+    asprintf(&command, "swaymsg -s $SWAYSOCK output eDP-1 bg %s fill", filepath);
     convert_to_image(image);
     encodeOneStep(filepath, image);
     system(command);
@@ -116,6 +115,7 @@ int main(int argc, char* argv[]) {
     while (1) {
         convert_to_image(image);
         encodeOneStep(filepath, image);
+    	system(command);
         step();
         memcpy(grid, buff, sizeof(grid));
         usleep(5000*1000);
