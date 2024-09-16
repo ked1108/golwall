@@ -105,17 +105,21 @@ int main(int argc, char* argv[]) {
     generate();
 
     unsigned char* image = malloc(IMG_WIDTH * IMG_HEIGHT * 4);
-    char* command = "nitrogen --set-zoom-fill";
-
-    asprintf(&command, "nitrogen --set-zoom-fill %s", filepath);
+    char* command1;
+    char* command2;
+    asprintf(&command1, "gsettings set org.gnome.desktop.background picture-uri %s", filepath);
+    asprintf(&command2, "gsettings set org.gnome.desktop.background picture-uri-dark %s", filepath);
     convert_to_image(image);
     encodeOneStep(filepath, image);
-    system(command);
+    system(command1);
+    system(command2);
 
     int iter = 0;
     while (1) {
         convert_to_image(image);
         encodeOneStep(filepath, image);
+	system(command1);
+	system(command2);
         step();
         memcpy(grid, buff, sizeof(grid));
         usleep(5000*1000);
