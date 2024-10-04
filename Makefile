@@ -2,14 +2,16 @@ CC = gcc
 
 CFLAGS = -pedantic -Wall -Wextra 
 
-SRCS = main.c lodepng.c
+LFLAGS = `sdl2-config --cflags --libs` -lX11
+
+SRCS = main.c 
 
 OUT = golwall
 
 all: $(OUT)
 
 $(OUT): $(SRCS)
-	$(CC) $(CFLAGS) -o $(OUT) $(SRCS) 
+	$(CC) $(CFLAGS) $(LFLAGS) -o $(OUT) $(SRCS) 
 
 clean:
 	rm -f $(OUT)

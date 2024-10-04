@@ -1,62 +1,75 @@
 #include <fcntl.h>
 #include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 #include <unistd.h>
-#include "lodepng.h"
+#include <SDL2/SDL.h>
+#include <X11/Xlib.h>
 
-#define ROWS 36
-#define COLS 64
 
-#define IMG_WIDTH   1920
-#define IMG_HEIGHT  1080
+#define ROWS (10*4)
+#define COLS (16*4)
+
+#define CELL_SIZE 30
+
+typedef struct {
+	Display* disp;
+	SDL_Window* window;
+	SDL_Renderer* renderer;
+} Video;
 
 
 int grid[ROWS][COLS] = {0};
 int buff[ROWS][COLS] = {0};
 
+/********************* SDL ************************/
 
-// ONE STEP ENCODING TO FILE
-void encodeOneStep(const char* filename, const unsigned char* image) {
-  unsigned error = lodepng_encode32_file(filename, image, IMG_WIDTH, IMG_HEIGHT);
-  if(error) printf("error %u: %s\n", error, lodepng_error_text(error));
+static Video Setup(void) {
+    Video self;
+    self.disp = XOpenDisplay(NULL);
+	if(!self.disp) {
+		fprintf(stderr, "cant open display :(");
+	}
+    const Window x11w = RootWindow(self.disp, DefaultScreen(self.disp));
+    if(SDL_Init(SDL_INIT_VIDEO) < 0) {
+		fprintf(stderr, "cant intialise SDL :( :%s", SDL_GetError());
+	};
+    self.window = SDL_CreateWindowFrom((void*) x11w);
+	if(!self.window) {
+		fprintf(stderr, "cant create window :( :%s", SDL_GetError());
+	}
+    self.renderer = SDL_CreateRenderer(self.window, 
+									   -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    return self;
 }
 
-void convert_to_image(unsigned char* image) {
-    float x_ratio = (float)IMG_WIDTH   / COLS;
-    float y_ratio = (float)IMG_HEIGHT  / ROWS;
-
-    for(int y = 0; y < IMG_HEIGHT; y++) { 
-        for(int x = 0; x < IMG_WIDTH; x++) {
-            int src_x = (int)x / x_ratio;
-            int src_y = (int)y / y_ratio;
-
-            if (src_y >= ROWS) src_y = ROWS - 1;
-            if (src_x >= COLS) src_x = COLS - 1;
-            
-            int dst = 4 * y * IMG_WIDTH + 4 * x;
-            image[dst+0] = grid[src_y][src_x] ? 255 : 0;
-            image[dst+1] = grid[src_y][src_x] ? 255 : 0;
-            image[dst+2] = grid[src_y][src_x] ? 255 : 0;
-            image[dst+3] = 255;
-        }
-    }
-
+static void Clear(Video* self) {
+	SDL_SetRenderDrawColor(self->renderer, 0, 0, 0, 255); 
+	SDL_RenderClear(self->renderer);
 }
 
-
-void display() {
-    for (int y = 0; y < ROWS; ++y) {
-        for (int x = 0; x < COLS; ++x) {
-            if (grid[y][x]) {
-                printf("#");
-            } else {
-                printf(".");
-            }
-        }
-        printf("\n");
-    }
+static void Teardown(Video* self) {
+    XCloseDisplay(self->disp);
+    SDL_Quit();
+    SDL_DestroyWindow(self->window);
+    SDL_DestroyRenderer(self->renderer);
 }
+
+static void renderGrid(Video* self) {
+	for(int row = 0; row < ROWS; row++) {
+		for(int col = 0; col < COLS; col++) {
+			if(grid[row][col] == 1) {
+				SDL_Rect cell;
+				cell.x = col * CELL_SIZE;
+				cell.y = row * CELL_SIZE;
+				cell.w = CELL_SIZE;
+				cell.h = CELL_SIZE;
+				SDL_SetRenderDrawColor(self->renderer, 255, 255, 255, 255);
+				SDL_RenderFillRect(self->renderer, &cell);
+			}
+		}
+	}
+}
+
+/********************** GOL ***********************/
 
 int mod(int a, int b) {
     return (a%b + b)%b;
@@ -66,10 +79,10 @@ int count_neighbours(int cx, int cy) {
     int neighbours = 0;
     for(int dx = -1; dx <= 1; dx++) {
         for(int dy = -1; dy <= 1; dy++) {
+			if (dx == 0 && dy == 0) continue;
             int x = mod(cx+dx, COLS);
             int y = mod(cy+dy, ROWS);
-            if(grid[y][x]) neighbours++;
-        }
+            if(grid[y][x]) neighbours++; }
     }
 
     return neighbours;
@@ -96,32 +109,26 @@ void generate(){
     }
 }
 
-int main(int argc, char* argv[]) {
-    if(argc != 2) {
-        printf("Usage: %s <path to wallpaper>\n", argv[0]);
-        return 1;
-    }
-    char* filepath = argv[1];
+int main() {
     generate();
+    Video video = Setup();
 
-    unsigned char* image = malloc(IMG_WIDTH * IMG_HEIGHT * 4);
-    char* command = "nitrogen --set-zoom-fill";
-
-    asprintf(&command, "nitrogen --set-zoom-fill %s", filepath);
-    convert_to_image(image);
-    encodeOneStep(filepath, image);
-    system(command);
-
-    int iter = 0;
-    while (1) {
-        convert_to_image(image);
-        encodeOneStep(filepath, image);
+    for(int i = 0; ;i++) {
+		Clear(&video);
+        renderGrid(&video);
+        SDL_RenderPresent(video.renderer);
         step();
         memcpy(grid, buff, sizeof(grid));
-        usleep(5000*1000);
-        iter++;
-        if(iter%10 == 0) generate();
+		SDL_Delay(100);
+        if(i%100 == 0) generate();
+
+		SDL_Event event;
+        SDL_PollEvent(&event);
+        if(event.type == SDL_QUIT)
+            break;
     }
+
+    Teardown(&video);
 
     return 0;
 }
