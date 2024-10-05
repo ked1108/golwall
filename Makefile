@@ -2,11 +2,11 @@ CC = gcc
 
 CFLAGS = -pedantic -Wall -Wextra 
 
-LFLAGS = `sdl2-config --cflags --libs` -lX11
+LFLAGS = `sdl2-config --cflags --libs` -lX11 -fopenmp
 
 SRCS = main.c 
 
-OUT = golwall
+OUT = golwall-x
 
 all: $(OUT)
 

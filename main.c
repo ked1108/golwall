@@ -1,14 +1,13 @@
-#include <fcntl.h>
+#include <time.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <SDL2/SDL.h>
 #include <X11/Xlib.h>
+#include <omp.h>
 
+#define ROWS (10*10)
+#define COLS (16*10)
 
-#define ROWS (10*4)
-#define COLS (16*4)
-
-#define CELL_SIZE 30
+#define CELL_SIZE 12
 
 typedef struct {
 	Display* disp;
@@ -29,6 +28,9 @@ static Video Setup(void) {
 		fprintf(stderr, "cant open display :(");
 	}
     const Window x11w = RootWindow(self.disp, DefaultScreen(self.disp));
+	if(!x11w) {
+		fprintf(stderr, "Error getting window");
+	}
     if(SDL_Init(SDL_INIT_VIDEO) < 0) {
 		fprintf(stderr, "cant intialise SDL :( :%s", SDL_GetError());
 	};
@@ -89,6 +91,7 @@ int count_neighbours(int cx, int cy) {
 }
 
 void step() {
+	#pragma omp parallel for
     for(int y = 0; y < ROWS; y++) {
         for(int x = 0; x < COLS; x++) {
             int neighbours = count_neighbours(x, y);
@@ -98,12 +101,11 @@ void step() {
 }
 
 void generate(){
-    int fd = open("/dev/urandom", O_RDONLY);
-    
+	unsigned int seed = time(0);
+	#pragma omp parallel for
     for(int y = 0; y < ROWS; y++) {
         for(int x = 0; x < COLS; x++) {
-            int num;
-            read(fd, &num, sizeof(num));
+			int num = rand_r(&seed);
             grid[y][x] = num%2;
         }
     }
@@ -120,7 +122,7 @@ int main() {
         step();
         memcpy(grid, buff, sizeof(grid));
 		SDL_Delay(100);
-        if(i%100 == 0) generate();
+        if(i%300 == 0) generate();
 
 		SDL_Event event;
         SDL_PollEvent(&event);
